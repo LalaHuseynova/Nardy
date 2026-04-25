@@ -1,8 +1,14 @@
 let selectedDie = null;
-let possibleMoves = [];          // {type, source, target}
+let possibleMoves = [];
 let highlightedSources = new Set();
 let selectedSource = null;
-let possibleTargets = new Map(); // source -> array of target indices (or null for bear off)
+let possibleTargets = new Map();
+let gameOver = false;
+let rollAnimationInterval = null;
+let isRolling = false;
+
+// for source‑first mode
+let pendingSource = null;
 
 async function loadState() {
   const response = await fetch("/api/state");
@@ -11,13 +17,16 @@ async function loadState() {
   renderBoard(data.board);
   updateDiceUI(data.remaining_dice);
   resetSelection();
+  gameOver = data.game_over;
+  if (gameOver) document.getElementById("roll-btn").disabled = true;
 }
 
 function renderInfo(data) {
-  const currentPlayerText =
-    data.current_player === 1 ? "Player 1 (+)" : "Player 2 (-)";
+  const currentPlayerText = data.current_player === 1 ? "Player 1 (+)" : "Player 2 (-)";
   document.getElementById("current-player").textContent =
-    `Current player: ${currentPlayerText}`;
+    data.game_over 
+      ? (data.winner === 1 ? "🏆 Player 1 (White) wins! 🏆" : "🏆 Player 2 (Black) wins! 🏆")
+      : `Current player: ${currentPlayerText}`;
   document.getElementById("borne-off").textContent =
     `Borne off: P1=${data.borne_off["1"]}, P2=${data.borne_off["-1"]}`;
 }
@@ -48,19 +57,15 @@ function renderBoard(board) {
   const rightBottom = document.createElement("div");
   rightBottom.className = "row bottom";
 
-  // points 13..18 (index 12..17)
   for (let i = 12; i <= 17; i++) {
     leftTop.appendChild(createPoint(board[i], i + 1, "top", i % 2 === 0 ? "dark" : "light"));
   }
-  // points 19..24 (index 18..23)
   for (let i = 18; i <= 23; i++) {
     rightTop.appendChild(createPoint(board[i], i + 1, "top", i % 2 === 0 ? "light" : "dark"));
   }
-  // points 12..7 (index 11 down to 6)
   for (let i = 11; i >= 6; i--) {
     leftBottom.appendChild(createPoint(board[i], i + 1, "bottom", i % 2 === 0 ? "light" : "dark"));
   }
-  // points 6..1 (index 5 down to 0)
   for (let i = 5; i >= 0; i--) {
     rightBottom.appendChild(createPoint(board[i], i + 1, "bottom", i % 2 === 0 ? "dark" : "light"));
   }
@@ -73,7 +78,6 @@ function renderBoard(board) {
   boardDiv.appendChild(leftHalf);
   boardDiv.appendChild(rightHalf);
 
-  // reattach board click events
   attachBoardEvents();
 }
 
@@ -103,16 +107,13 @@ function createPoint(value, label, rowType, colorType) {
   const count = Math.abs(value);
   const color = value > 0 ? "white" : "black";
   const MAX_VISIBLE = 6;
-
-  // how many to show as individual checkers
   const visibleCount = Math.min(count, MAX_VISIBLE);
   const remaining = count - visibleCount;
+  const step = 32;
 
   for (let i = 0; i < visibleCount; i++) {
     const checker = document.createElement("div");
     checker.className = `checker ${color}`;
-    // reduce overlap to keep them inside triangle
-    const step = rowType === "top" ? 32 : 32;
     if (rowType === "top") {
       checker.style.top = `${i * step}px`;
     } else {
@@ -125,11 +126,10 @@ function createPoint(value, label, rowType, colorType) {
     const badge = document.createElement("div");
     badge.className = `checker-badge ${color}`;
     badge.textContent = `+${remaining}`;
-    // position the badge below/above the visible stack
     if (rowType === "top") {
-      badge.style.top = `${visibleCount * 32}px`;
+      badge.style.top = `${visibleCount * step}px`;
     } else {
-      badge.style.bottom = `${visibleCount * 32}px`;
+      badge.style.bottom = `${visibleCount * step}px`;
     }
     checkersDiv.appendChild(badge);
   }
@@ -149,6 +149,8 @@ function updateDiceUI(remainingDice) {
   const dice2 = document.getElementById("dice2");
   dice1.style.display = "none";
   dice2.style.display = "none";
+  dice1.classList.remove("dice-highlight");
+  dice2.classList.remove("dice-highlight");
   if (!remainingDice || remainingDice.length === 0) return;
 
   dice1.src = `/static/dice/dice${remainingDice[0]}.png`;
@@ -158,29 +160,99 @@ function updateDiceUI(remainingDice) {
     dice2.src = `/static/dice/dice${remainingDice[1]}.png`;
     dice2.style.display = "inline-block";
     dice2.dataset.value = remainingDice[1];
+  } else {
+    dice2.style.display = "none";
   }
 }
 
 async function rollDice() {
-  resetSelection();
-  const response = await fetch("/api/roll");
-  const data = await response.json();
-  updateDiceUI(data.remaining_dice);
-  await loadState(); // refresh board and info
+  if (isRolling || gameOver) return;
+
+  const rollBtn = document.getElementById("roll-btn");
+  const dice1 = document.getElementById("dice1");
+  const dice2 = document.getElementById("dice2");
+
+  rollBtn.disabled = true;
+  isRolling = true;
+
+  let frames = 0;
+  const maxFrames = 12;
+
+  rollAnimationInterval = setInterval(() => {
+    const rand1 = Math.floor(Math.random() * 6) + 1;
+    const rand2 = Math.floor(Math.random() * 6) + 1;
+    dice1.src = `/static/dice/dice${rand1}.png`;
+    dice2.src = `/static/dice/dice${rand2}.png`;
+    dice1.style.display = "inline-block";
+    dice2.style.display = "inline-block";
+
+    frames++;
+    if (frames >= maxFrames) {
+      clearInterval(rollAnimationInterval);
+      finishRoll();
+    }
+  }, 50);
 }
 
+async function finishRoll() {
+  const response = await fetch("/api/roll");
+  const data = await response.json();
+
+  const dice1 = document.getElementById("dice1");
+  const dice2 = document.getElementById("dice2");
+  if (data.dice[0]) dice1.src = `/static/dice/dice${data.dice[0]}.png`;
+  if (data.dice[1]) dice2.src = `/static/dice/dice${data.dice[1]}.png`;
+
+  updateDiceUI(data.remaining_dice);
+  await loadState();
+
+  document.getElementById("roll-btn").disabled = false;
+  isRolling = false;
+}
+
+// ========== DIE‑FIRST FLOW ==========
 async function onDieClick(event) {
+  if (gameOver) return;
   const dieImg = event.currentTarget;
   const dieValue = parseInt(dieImg.dataset.value);
   if (isNaN(dieValue)) return;
+
+  // If we are in source‑first mode (pendingSource exists)
+  if (pendingSource !== null && selectedSource !== null) {
+    // complete the source‑first move
+    selectedDie = dieValue;
+    const resp = await fetch(`/api/legal_moves_for_die?die=${dieValue}`);
+    const data = await resp.json();
+    let moves = data.moves;
+    // filter moves that start from pendingSource
+    moves = moves.filter(m => m.source === pendingSource);
+    if (moves.length === 0) {
+      alert("This die cannot move the selected checker");
+      resetSelection();
+      return;
+    }
+    possibleMoves = moves;
+    highlightedSources.clear();
+    possibleTargets.clear();
+    highlightedSources.add(pendingSource);
+    possibleTargets.set(pendingSource, []);
+    for (let move of possibleMoves) {
+      possibleTargets.get(pendingSource).push(move.target);
+    }
+    applyHighlights();
+    // clear pending flag and remove dice highlights
+    pendingSource = null;
+    document.querySelectorAll(".dice").forEach(d => d.classList.remove("dice-highlight"));
+    return;
+  }
+
+  // Normal die‑first flow
   selectedDie = dieValue;
-  // fetch legal moves for this die
   const resp = await fetch(`/api/legal_moves_for_die?die=${dieValue}`);
   const data = await resp.json();
   possibleMoves = data.moves;
   highlightedSources.clear();
   possibleTargets.clear();
-
   for (const move of possibleMoves) {
     highlightedSources.add(move.source);
     if (!possibleTargets.has(move.source)) possibleTargets.set(move.source, []);
@@ -189,8 +261,67 @@ async function onDieClick(event) {
   applyHighlights();
 }
 
+// ========== SOURCE‑FIRST FLOW (click on a point) ==========
+async function onPointClick(event) {
+  if (gameOver) return;
+  const pointDiv = event.currentTarget;
+  const pointNumber = parseInt(pointDiv.dataset.point) - 1;
+
+  // If we already have a die selected (die‑first flow), handle target selection
+  if (selectedDie !== null) {
+    // target selection mode
+    if (selectedSource === null) {
+      // choose source (green)
+      if (highlightedSources.has(pointNumber)) {
+        selectedSource = pointNumber;
+        applyHighlights();
+      } else {
+        resetSelection();
+      }
+    } else {
+      // choose target from already selected source
+      const targets = possibleTargets.get(selectedSource) || [];
+      if (targets.includes(pointNumber)) {
+        const move = possibleMoves.find(m => m.source === selectedSource && m.target === pointNumber);
+        if (move) executeMove(selectedDie, move);
+        else resetSelection();
+      } else {
+        resetSelection();
+      }
+    }
+    return;
+  }
+
+  // No die selected yet → source‑first mode
+  // Check which remaining dice can move from this point
+  const resp = await fetch(`/api/legal_dice_for_source?source=${pointNumber}`);
+  const data = await resp.json();
+  if (data.legal_dice && data.legal_dice.length > 0) {
+    // store the source and highlight dice
+    resetSelection();   // clear any old selection
+    pendingSource = pointNumber;
+    selectedSource = pointNumber;  // show as selected source on board
+    applyHighlights(); // this will highlight the source (green/orange)
+    // highlight the dice that are legal
+    highlightLegalDice(data.legal_dice);
+  } else {
+    resetSelection();
+  }
+}
+
+function highlightLegalDice(diceValues) {
+  const dice1 = document.getElementById("dice1");
+  const dice2 = document.getElementById("dice2");
+  [dice1, dice2].forEach(dice => {
+    dice.classList.remove("dice-highlight");
+    const val = parseInt(dice.dataset.value);
+    if (diceValues.includes(val) && dice.style.display !== "none") {
+      dice.classList.add("dice-highlight");
+    }
+  });
+}
+
 function applyHighlights() {
-  // clear previous highlights
   document.querySelectorAll(".point").forEach(p => {
     p.classList.remove("possible-source", "possible-target", "selected-source");
   });
@@ -200,7 +331,6 @@ function applyHighlights() {
     const elem = document.querySelector(`.point[data-point="${src+1}"]`);
     if (elem) elem.classList.add("possible-source");
   }
-  // if a source is selected, show its targets
   if (selectedSource !== null) {
     const srcElem = document.querySelector(`.point[data-point="${selectedSource+1}"]`);
     if (srcElem) srcElem.classList.add("selected-source");
@@ -216,35 +346,10 @@ function applyHighlights() {
   }
 }
 
-function onPointClick(event) {
-  const pointDiv = event.currentTarget;
-  const pointNumber = parseInt(pointDiv.dataset.point) - 1; // 0‑based
-
-  if (selectedSource === null) {
-    // choose source
-    if (highlightedSources.has(pointNumber)) {
-      selectedSource = pointNumber;
-      applyHighlights();
-    } else {
-      resetSelection();
-    }
-  } else {
-    // choose target
-    const targets = possibleTargets.get(selectedSource) || [];
-    if (targets.includes(pointNumber)) {
-      // find the move
-      const move = possibleMoves.find(m => m.source === selectedSource && m.target === pointNumber);
-      if (move) executeMove(selectedDie, move);
-      else resetSelection();
-    } else {
-      resetSelection();
-    }
-  }
-}
-
 function resetSelection() {
-  selectedSource = null;
   selectedDie = null;
+  selectedSource = null;
+  pendingSource = null;
   possibleMoves = [];
   highlightedSources.clear();
   possibleTargets.clear();
@@ -252,6 +357,7 @@ function resetSelection() {
     p.classList.remove("possible-source", "possible-target", "selected-source");
   });
   document.getElementById("bear-off-hint").style.display = "none";
+  document.querySelectorAll(".dice").forEach(d => d.classList.remove("dice-highlight"));
 }
 
 async function executeMove(die, move) {
@@ -266,22 +372,24 @@ async function executeMove(die, move) {
     resetSelection();
     return;
   }
-  // update UI
   renderInfo(data);
   renderBoard(data.board);
   updateDiceUI(data.remaining_dice);
   resetSelection();
-  // if no dice left, allow new roll; otherwise the dice remain clickable
+  if (data.game_over) {
+    gameOver = true;
+    document.getElementById("roll-btn").disabled = true;
+  }
 }
 
-// bear off click
+// Event listeners
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("roll-btn").addEventListener("click", rollDice);
   document.getElementById("cancel-selection").addEventListener("click", () => resetSelection());
   document.getElementById("dice1").addEventListener("click", onDieClick);
   document.getElementById("dice2").addEventListener("click", onDieClick);
   document.getElementById("bear-off-hint").addEventListener("click", () => {
-    if (selectedSource !== null) {
+    if (selectedSource !== null && !gameOver) {
       const move = possibleMoves.find(m => m.source === selectedSource && m.target === null);
       if (move) executeMove(selectedDie, move);
       else resetSelection();
