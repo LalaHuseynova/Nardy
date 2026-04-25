@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nardy – Click the Dice</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page">
+    <h1>Nardy</h1>
+
+    <div class="info-panel">
+      <div id="current-player">Current player: -</div>
+      <div id="borne-off">Borne off: -</div>
+    </div>
+
+    <div class="controls">
+      <button id="roll-btn">🎲 Roll Dice</button>
+      <button id="cancel-selection">✖ Cancel Selection</button>
+      <div class="dice-container">
+        <img id="dice1" class="dice" alt="Dice 1" />
+        <img id="dice2" class="dice" alt="Dice 2" />
+      </div>
+    </div>
+
+    <div class="board-wrapper">
+      <div id="board" class="board"></div>
+    </div>
+  </div>
+
+  <div id="bear-off-hint">⬆️ Bear off ⬆️</div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
