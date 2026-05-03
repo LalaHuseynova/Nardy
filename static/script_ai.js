@@ -403,7 +403,7 @@ async function onDieClick(event) {
     moves = moves.filter(m => m.source === pendingSource);
     if (moves.length === 0) {
       alert("This die cannot move the selected checker");
-      resetSelection();
+      await loadState();
       return;
     }
     possibleMoves = moves;
@@ -424,6 +424,10 @@ async function onDieClick(event) {
   const resp = await fetch(`api/legal_moves_for_die?die=${dieValue}`);
   const data = await resp.json();
   possibleMoves = data.moves;
+  if (!possibleMoves || possibleMoves.length === 0) {
+    await loadState();
+    return;
+  }
   highlightedSources.clear();
   possibleTargets.clear();
   for (const move of possibleMoves) {
@@ -469,7 +473,7 @@ async function onPointClick(event) {
     applyHighlights();
     highlightLegalDice(data.legal_dice);
   } else {
-    resetSelection();
+    await loadState();
   }
 }
 

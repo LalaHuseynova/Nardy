@@ -20,12 +20,40 @@ opening_roll = None
 def is_game_over():
     return state.borne_off[1] == 15 or state.borne_off[-1] == 15
 
+def has_legal_remaining_move():
+    if not remaining_dice:
+        return False
+
+    head_idx = game.head_index(state.current_player)
+    for die in remaining_dice:
+        moves = game.get_legal_single_moves(state, die)
+        for move in moves:
+            _, src, _ = move
+            if src == head_idx and head_moves_used >= max_head_moves:
+                continue
+            return True
+    return False
+
+def pass_turn():
+    global remaining_dice, head_moves_used, max_head_moves
+    state.current_player *= -1
+    remaining_dice = []
+    head_moves_used = 0
+    max_head_moves = 1
+
+def skip_turn_if_no_legal_moves():
+    if remaining_dice and not has_legal_remaining_move():
+        pass_turn()
+        return True
+    return False
+
 @app.route("/")
 def index():
     return render_template("index.html")
 
 @app.route("/api/state")
 def get_state():
+    skip_turn_if_no_legal_moves()
     return jsonify({
         "board": state.board,
         "current_player": state.current_player,
@@ -84,9 +112,12 @@ def roll_dice():
     remaining_dice = rolled[:]
     head_moves_used = 0
     max_head_moves = game.allowed_head_moves_in_turn(state, rolled)
+    turn_skipped = skip_turn_if_no_legal_moves()
     return jsonify({
         "dice": rolled,
-        "remaining_dice": remaining_dice
+        "remaining_dice": remaining_dice,
+        "current_player": state.current_player,
+        "turn_skipped": turn_skipped
     })
 
 @app.route("/api/legal_moves_for_die")
@@ -183,28 +214,10 @@ def apply_die_move():
     remaining_dice.remove(die)
 
     # check for legal moves with remaining dice
-    if remaining_dice:
-        any_legal = False
-        for d in remaining_dice:
-            moves_for_d = game.get_legal_single_moves(state, d)
-            for m in moves_for_d:
-                _, src, _ = m
-                if src == head_idx and head_moves_used >= max_head_moves:
-                    continue
-                any_legal = True
-                break
-            if any_legal:
-                break
-        if not any_legal:
-            state.current_player *= -1
-            remaining_dice = []
-            head_moves_used = 0
-            max_head_moves = 1
+    turn_skipped = skip_turn_if_no_legal_moves()
 
-    if not remaining_dice:
-        state.current_player *= -1
-        head_moves_used = 0
-        max_head_moves = 1
+    if not remaining_dice and not turn_skipped:
+        pass_turn()
 
     return jsonify({
         "board": state.board,
