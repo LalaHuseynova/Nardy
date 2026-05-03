@@ -3,29 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nardy – Human vs AI</title>
+  <title>Nardy - Human vs AI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="page">
-    <h1>Nardy - Human vs AI</h1>
-    <div class="info-panel">
-      <div id="current-player">Current player: -</div>
-      <div id="borne-off">Borne off: -</div>
-    </div>
-    <div class="controls">
-      <button id="roll-btn">🎲 Roll Dice</button>
-      <button id="cancel-selection">✖ Cancel Selection</button>
-      <div class="dice-container">
-        <img id="dice1" class="dice" alt="Dice 1" />
-        <img id="dice2" class="dice" alt="Dice 2" />
+  <main class="page">
+    <header class="game-header">
+      <div>
+        <p class="eyebrow">Challenge the AI</p>
+        <h1>Nardy Arena</h1>
       </div>
-    </div>
-    <div class="board-wrapper">
-      <div id="board" class="board"></div>
-    </div>
-  </div>
-  <div id="bear-off-hint">⬆️ Bear off ⬆️</div>
+      <a class="mode-pill" href="/" aria-current="page">Human vs AI</a>
+    </header>
+
+    <section class="game-shell">
+      <div class="hud">
+        <div class="info-panel">
+          <div class="stat-card">
+            <span class="stat-label">Turn</span>
+            <strong id="current-player">Current player: -</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Score</span>
+            <strong id="borne-off">Borne off: -</strong>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="roll-btn" class="primary-action">Roll Dice</button>
+          <button id="cancel-selection" class="secondary-action">Cancel</button>
+          <div class="dice-container" aria-label="Rolled dice">
+            <img id="dice1" class="dice" alt="Dice 1" />
+            <img id="dice2" class="dice" alt="Dice 2" />
+          </div>
+        </div>
+      </div>
+
+      <div class="board-wrapper">
+        <div id="board" class="board"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="bear-off-hint">Bear off</div>
   <script src="{{ url_for('static', filename='script_ai.js') }}"></script>
 </body>
 </html>

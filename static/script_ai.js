@@ -42,7 +42,7 @@ async function aiMoveIfNeeded() {
   // Show a status message
   const aiStatus = document.createElement("div");
   aiStatus.id = "ai-status";
-  aiStatus.textContent = "🎲 AI is rolling dice...";
+  aiStatus.textContent = "AI is rolling dice...";
   aiStatus.style.position = "fixed";
   aiStatus.style.bottom = "120px";
   aiStatus.style.right = "30px";
@@ -57,11 +57,11 @@ async function aiMoveIfNeeded() {
   await animateAIDiceRollSlow();
 
   // 2. Wait 2.5 seconds so human can read the dice
-  aiStatus.textContent = "🎲 AI rolled! Waiting...";
+  aiStatus.textContent = "AI rolled. Waiting...";
   await delay(2500);
 
   // 3. Show thinking message
-  aiStatus.textContent = "🤔 AI is thinking...";
+  aiStatus.textContent = "AI is thinking...";
   await delay(1000);
 
   // 4. Ask AI to move
@@ -76,7 +76,7 @@ async function aiMoveIfNeeded() {
   }
 
   // 5. Update board instantly
-  aiStatus.textContent = "🎯 AI moved!";
+  aiStatus.textContent = "AI moved!";
   renderInfo(moveData);
   renderBoard(moveData.board);
   updateDiceUI(moveData.remaining_dice);
@@ -137,7 +137,7 @@ function renderInfo(data) {
   const currentPlayerText = data.current_player === 1 ? "Player 1 (+)" : "Player 2 (-)";
   document.getElementById("current-player").textContent =
     data.game_over 
-      ? (data.winner === 1 ? "🏆 Player 1 (White) wins! 🏆" : "🏆 Player 2 (Black) wins! 🏆")
+      ? (data.winner === 1 ? "Player 1 (White) wins!" : "Player 2 (Black) wins!")
       : `Current player: ${currentPlayerText}`;
   document.getElementById("borne-off").textContent =
     `Borne off: P1=${data.borne_off["1"]}, P2=${data.borne_off["-1"]}`;
@@ -221,16 +221,10 @@ function createPoint(value, label, rowType, colorType) {
   const MAX_VISIBLE = 6;
   const visibleCount = Math.min(count, MAX_VISIBLE);
   const remaining = count - visibleCount;
-  const step = 32;
 
   for (let i = 0; i < visibleCount; i++) {
     const checker = document.createElement("div");
     checker.className = `checker ${color}`;
-    if (rowType === "top") {
-      checker.style.top = `${i * step}px`;
-    } else {
-      checker.style.bottom = `${i * step}px`;
-    }
     checkersDiv.appendChild(checker);
   }
 
@@ -238,11 +232,6 @@ function createPoint(value, label, rowType, colorType) {
     const badge = document.createElement("div");
     badge.className = `checker-badge ${color}`;
     badge.textContent = `+${remaining}`;
-    if (rowType === "top") {
-      badge.style.top = `${visibleCount * step}px`;
-    } else {
-      badge.style.bottom = `${visibleCount * step}px`;
-    }
     checkersDiv.appendChild(badge);
   }
 
