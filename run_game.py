@@ -1,54 +1,44 @@
-import subprocess
-import sys
+import threading
+import webbrowser
+
+from flask import Flask, render_template
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from werkzeug.serving import run_simple
+
+from app import app as human_app
+from app_ai import app as ai_app
 
 
-MODES = {
-    "1": ("Human vs Human", "app.py"),
-    "2": ("Human vs AI", "app_ai.py"),
-}
+HOST = "127.0.0.1"
+PORT = 5000
+
+launcher = Flask(__name__)
 
 
-def choose_mode():
-    print("\nNardy game launcher")
-    print("===================")
-    for key, (label, filename) in MODES.items():
-        print(f"{key}. {label} ({filename})")
+@launcher.route("/")
+def mode_select():
+    return render_template("mode_select.html")
 
-    while True:
-        choice = input("\nChoose mode 1 or 2: ").strip()
-        if choice in MODES:
-            return MODES[choice]
-        print("Invalid choice. Please enter 1 or 2.")
+
+application = DispatcherMiddleware(
+    launcher,
+    {
+        "/human": human_app,
+        "/ai": ai_app,
+    },
+)
+
+
+def open_browser():
+    webbrowser.open(f"http://{HOST}:{PORT}/")
 
 
 def main():
-    if len(sys.argv) > 1:
-        arg = sys.argv[1].lower().strip()
-        aliases = {
-            "human": "1",
-            "hvh": "1",
-            "1": "1",
-            "ai": "2",
-            "human-ai": "2",
-            "hva": "2",
-            "2": "2",
-        }
-        mode_key = aliases.get(arg)
-        if mode_key is None:
-            print("Usage: python run_game.py [1|2|human|ai]")
-            return 1
-        label, filename = MODES[mode_key]
-    else:
-        label, filename = choose_mode()
-
-    print(f"\nStarting {label}. Open in your browser.")
-    print("Press Ctrl+C here to stop the server.\n")
-    try:
-        subprocess.run([sys.executable, filename], check=False)
-    except KeyboardInterrupt:
-        print("\nServer stopped.")
-    return 0
+    threading.Timer(1.0, open_browser).start()
+    print(f"Nardy launcher is running at http://{HOST}:{PORT}/")
+    print("Choose a game mode in the browser. Press Ctrl+C here to stop.")
+    run_simple(HOST, PORT, application, use_debugger=True, use_reloader=False)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

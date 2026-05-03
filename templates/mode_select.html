@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nardy - Choose Mode</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="mode-page">
+  <main class="mode-select">
+    <p class="eyebrow">Choose your table</p>
+    <h1>Nardy</h1>
+
+    <div class="mode-grid">
+      <a class="mode-card human-card" href="/human/">
+        <span class="mode-kicker">Local match</span>
+        <strong>Human vs Human</strong>
+        <span>Play both sides on one board.</span>
+      </a>
+
+      <a class="mode-card ai-card" href="/ai/">
+        <span class="mode-kicker">Arena match</span>
+        <strong>Human vs AI</strong>
+        <span>Play white against the AI.</span>
+      </a>
+    </div>
+  </main>
+</body>
+</html>

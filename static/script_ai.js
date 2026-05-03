@@ -13,7 +13,7 @@ let isAIPlaying = false;
 const AI_PLAYER = -1;
 
 async function loadState() {
-  const response = await fetch("/api/state");
+  const response = await fetch("api/state");
   const data = await response.json();
   renderInfo(data);
   renderBoard(data.board);
@@ -65,7 +65,7 @@ async function aiMoveIfNeeded() {
   await delay(1000);
 
   // 4. Ask AI to move
-  const moveRes = await fetch("/api/ai_move", { method: "POST" });
+  const moveRes = await fetch("api/ai_move", { method: "POST" });
   const moveData = await moveRes.json();
   if (!moveRes.ok) {
     console.error("AI move failed:", moveData.error);
@@ -108,8 +108,8 @@ async function animateAIDiceRollSlow() {
   const interval = setInterval(() => {
     const rand1 = Math.floor(Math.random() * 6) + 1;
     const rand2 = Math.floor(Math.random() * 6) + 1;
-    dice1.src = `/static/dice/dice${rand1}.png`;
-    dice2.src = `/static/dice/dice${rand2}.png`;
+    dice1.src = `static/dice/dice${rand1}.png`;
+    dice2.src = `static/dice/dice${rand2}.png`;
     frames++;
     if (frames >= maxFrames) {
       clearInterval(interval);
@@ -119,12 +119,12 @@ async function animateAIDiceRollSlow() {
 }
 
 async function finishAIDiceRoll() {
-  const response = await fetch("/api/roll");
+  const response = await fetch("api/roll");
   const data = await response.json();
   const dice1 = document.getElementById("dice1");
   const dice2 = document.getElementById("dice2");
-  if (data.dice[0]) dice1.src = `/static/dice/dice${data.dice[0]}.png`;
-  if (data.dice[1]) dice2.src = `/static/dice/dice${data.dice[1]}.png`;
+  if (data.dice[0]) dice1.src = `static/dice/dice${data.dice[0]}.png`;
+  if (data.dice[1]) dice2.src = `static/dice/dice${data.dice[1]}.png`;
   updateDiceUI(data.remaining_dice);
 }
 
@@ -254,11 +254,11 @@ function updateDiceUI(remainingDice) {
   dice2.classList.remove("dice-highlight");
   if (!remainingDice || remainingDice.length === 0) return;
 
-  dice1.src = `/static/dice/dice${remainingDice[0]}.png`;
+  dice1.src = `static/dice/dice${remainingDice[0]}.png`;
   dice1.style.display = "inline-block";
   dice1.dataset.value = remainingDice[0];
   if (remainingDice[1]) {
-    dice2.src = `/static/dice/dice${remainingDice[1]}.png`;
+    dice2.src = `static/dice/dice${remainingDice[1]}.png`;
     dice2.style.display = "inline-block";
     dice2.dataset.value = remainingDice[1];
   } else {
@@ -282,8 +282,8 @@ async function rollDice() {
   rollAnimationInterval = setInterval(() => {
     const rand1 = Math.floor(Math.random() * 6) + 1;
     const rand2 = Math.floor(Math.random() * 6) + 1;
-    dice1.src = `/static/dice/dice${rand1}.png`;
-    dice2.src = `/static/dice/dice${rand2}.png`;
+    dice1.src = `static/dice/dice${rand1}.png`;
+    dice2.src = `static/dice/dice${rand2}.png`;
     dice1.style.display = "inline-block";
     dice2.style.display = "inline-block";
 
@@ -296,13 +296,13 @@ async function rollDice() {
 }
 
 async function finishRoll() {
-  const response = await fetch("/api/roll");
+  const response = await fetch("api/roll");
   const data = await response.json();
 
   const dice1 = document.getElementById("dice1");
   const dice2 = document.getElementById("dice2");
-  if (data.dice[0]) dice1.src = `/static/dice/dice${data.dice[0]}.png`;
-  if (data.dice[1]) dice2.src = `/static/dice/dice${data.dice[1]}.png`;
+  if (data.dice[0]) dice1.src = `static/dice/dice${data.dice[0]}.png`;
+  if (data.dice[1]) dice2.src = `static/dice/dice${data.dice[1]}.png`;
 
   updateDiceUI(data.remaining_dice);
   await loadState();
@@ -319,7 +319,7 @@ async function onDieClick(event) {
 
   if (pendingSource !== null && selectedSource !== null) {
     selectedDie = dieValue;
-    const resp = await fetch(`/api/legal_moves_for_die?die=${dieValue}`);
+    const resp = await fetch(`api/legal_moves_for_die?die=${dieValue}`);
     const data = await resp.json();
     let moves = data.moves;
     moves = moves.filter(m => m.source === pendingSource);
@@ -343,7 +343,7 @@ async function onDieClick(event) {
   }
 
   selectedDie = dieValue;
-  const resp = await fetch(`/api/legal_moves_for_die?die=${dieValue}`);
+  const resp = await fetch(`api/legal_moves_for_die?die=${dieValue}`);
   const data = await resp.json();
   possibleMoves = data.moves;
   highlightedSources.clear();
@@ -382,7 +382,7 @@ async function onPointClick(event) {
     return;
   }
 
-  const resp = await fetch(`/api/legal_dice_for_source?source=${pointNumber}`);
+  const resp = await fetch(`api/legal_dice_for_source?source=${pointNumber}`);
   const data = await resp.json();
   if (data.legal_dice && data.legal_dice.length > 0) {
     resetSelection();
@@ -447,7 +447,7 @@ function resetSelection() {
 }
 
 async function executeMove(die, move) {
-  const response = await fetch("/api/apply_die_move", {
+  const response = await fetch("api/apply_die_move", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ die: die, move: move })

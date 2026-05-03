@@ -11,7 +11,7 @@ let isRolling = false;
 let pendingSource = null;
 
 async function loadState() {
-  const response = await fetch("/api/state");
+  const response = await fetch("api/state");
   const data = await response.json();
   renderInfo(data);
   renderBoard(data.board);
@@ -142,11 +142,11 @@ function updateDiceUI(remainingDice) {
   dice2.classList.remove("dice-highlight");
   if (!remainingDice || remainingDice.length === 0) return;
 
-  dice1.src = `/static/dice/dice${remainingDice[0]}.png`;
+  dice1.src = `static/dice/dice${remainingDice[0]}.png`;
   dice1.style.display = "inline-block";
   dice1.dataset.value = remainingDice[0];
   if (remainingDice[1]) {
-    dice2.src = `/static/dice/dice${remainingDice[1]}.png`;
+    dice2.src = `static/dice/dice${remainingDice[1]}.png`;
     dice2.style.display = "inline-block";
     dice2.dataset.value = remainingDice[1];
   } else {
@@ -170,8 +170,8 @@ async function rollDice() {
   rollAnimationInterval = setInterval(() => {
     const rand1 = Math.floor(Math.random() * 6) + 1;
     const rand2 = Math.floor(Math.random() * 6) + 1;
-    dice1.src = `/static/dice/dice${rand1}.png`;
-    dice2.src = `/static/dice/dice${rand2}.png`;
+    dice1.src = `static/dice/dice${rand1}.png`;
+    dice2.src = `static/dice/dice${rand2}.png`;
     dice1.style.display = "inline-block";
     dice2.style.display = "inline-block";
 
@@ -184,13 +184,13 @@ async function rollDice() {
 }
 
 async function finishRoll() {
-  const response = await fetch("/api/roll");
+  const response = await fetch("api/roll");
   const data = await response.json();
 
   const dice1 = document.getElementById("dice1");
   const dice2 = document.getElementById("dice2");
-  if (data.dice[0]) dice1.src = `/static/dice/dice${data.dice[0]}.png`;
-  if (data.dice[1]) dice2.src = `/static/dice/dice${data.dice[1]}.png`;
+  if (data.dice[0]) dice1.src = `static/dice/dice${data.dice[0]}.png`;
+  if (data.dice[1]) dice2.src = `static/dice/dice${data.dice[1]}.png`;
 
   updateDiceUI(data.remaining_dice);
   await loadState();
@@ -210,7 +210,7 @@ async function onDieClick(event) {
   if (pendingSource !== null && selectedSource !== null) {
     // complete the source‑first move
     selectedDie = dieValue;
-    const resp = await fetch(`/api/legal_moves_for_die?die=${dieValue}`);
+    const resp = await fetch(`api/legal_moves_for_die?die=${dieValue}`);
     const data = await resp.json();
     let moves = data.moves;
     // filter moves that start from pendingSource
@@ -237,7 +237,7 @@ async function onDieClick(event) {
 
   // Normal die‑first flow
   selectedDie = dieValue;
-  const resp = await fetch(`/api/legal_moves_for_die?die=${dieValue}`);
+  const resp = await fetch(`api/legal_moves_for_die?die=${dieValue}`);
   const data = await resp.json();
   possibleMoves = data.moves;
   highlightedSources.clear();
@@ -283,7 +283,7 @@ async function onPointClick(event) {
 
   // No die selected yet → source‑first mode
   // Check which remaining dice can move from this point
-  const resp = await fetch(`/api/legal_dice_for_source?source=${pointNumber}`);
+  const resp = await fetch(`api/legal_dice_for_source?source=${pointNumber}`);
   const data = await resp.json();
   if (data.legal_dice && data.legal_dice.length > 0) {
     // store the source and highlight dice
@@ -350,7 +350,7 @@ function resetSelection() {
 }
 
 async function executeMove(die, move) {
-  const response = await fetch("/api/apply_die_move", {
+  const response = await fetch("api/apply_die_move", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ die: die, move: move })
