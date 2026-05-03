@@ -242,7 +242,7 @@ h1 {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  min-width: 410px;
+  min-width: 560px;
 }
 
 button {
@@ -277,6 +277,39 @@ button:disabled {
   color: var(--cream);
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.opening-roll {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 300px;
+  padding: 8px;
+  border: 1px solid rgba(244, 201, 93, 0.24);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.opening-roll.resolved {
+  border-color: rgba(110, 231, 157, 0.34);
+}
+
+.start-action {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 14px;
+  color: var(--cream);
+  background: linear-gradient(180deg, #3b7a55, #25543a);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+#opening-roll-result {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: left;
 }
 
 .dice-container {
@@ -606,6 +639,11 @@ button:disabled {
     justify-content: flex-start;
     min-width: 0;
     flex-wrap: wrap;
+  }
+
+  .opening-roll {
+    max-width: none;
+    width: 100%;
   }
 
   .dice-container {

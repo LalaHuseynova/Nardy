@@ -6,6 +6,7 @@ let possibleTargets = new Map();
 let gameOver = false;
 let rollAnimationInterval = null;
 let isRolling = false;
+let gameStarted = false;
 
 // for source‑first mode
 let pendingSource = null;
@@ -16,9 +17,12 @@ async function loadState() {
   renderInfo(data);
   renderBoard(data.board);
   updateDiceUI(data.remaining_dice);
+  renderOpeningRoll(data);
   resetSelection();
   gameOver = data.game_over;
-  if (gameOver) document.getElementById("roll-btn").disabled = true;
+  gameStarted = Boolean(data.game_started);
+  document.getElementById("roll-btn").disabled =
+    gameOver || !gameStarted || (data.remaining_dice && data.remaining_dice.length > 0);
 }
 
 function renderInfo(data) {
@@ -26,9 +30,54 @@ function renderInfo(data) {
   document.getElementById("current-player").textContent =
     data.game_over 
       ? (data.winner === 1 ? "Player 1 (White) wins!" : "Player 2 (Black) wins!")
+      : data.game_started === false
+      ? "Roll one die to decide who starts"
       : `Current player: ${currentPlayerText}`;
   document.getElementById("borne-off").textContent =
     `Borne off: P1=${data.borne_off["1"]}, P2=${data.borne_off["-1"]}`;
+}
+
+function renderOpeningRoll(data) {
+  const panel = document.getElementById("opening-roll");
+  const button = document.getElementById("opening-roll-btn");
+  const result = document.getElementById("opening-roll-result");
+  if (!panel || !button || !result) return;
+
+  if (!data.game_started) {
+    panel.classList.remove("resolved");
+    button.disabled = false;
+    result.textContent = "One die each. Higher roll starts.";
+    return;
+  }
+
+  panel.classList.add("resolved");
+  button.disabled = true;
+  const openingRoll = data.opening_roll;
+  if (!openingRoll || !openingRoll.rolls || openingRoll.rolls.length === 0) {
+    result.textContent = "Starting player decided.";
+    return;
+  }
+
+  const lastRoll = openingRoll.rolls[openingRoll.rolls.length - 1];
+  const winner = openingRoll.winner === 1 ? "Player 1 starts" : "Player 2 starts";
+  const tieText = openingRoll.rolls.length > 1 ? ` (${openingRoll.rolls.length - 1} tie reroll)` : "";
+  result.textContent = `P1 ${lastRoll.player_one} - P2 ${lastRoll.player_two}. ${winner}${tieText}.`;
+}
+
+async function openingRollToStart() {
+  if (gameStarted || gameOver) return;
+  const button = document.getElementById("opening-roll-btn");
+  if (button) button.disabled = true;
+
+  const response = await fetch("api/opening_roll", { method: "POST" });
+  const data = await response.json();
+  if (!response.ok) {
+    alert(data.error || "Opening roll failed");
+    if (button) button.disabled = false;
+    return;
+  }
+
+  await loadState();
 }
 
 function renderBoard(board) {
@@ -155,7 +204,7 @@ function updateDiceUI(remainingDice) {
 }
 
 async function rollDice() {
-  if (isRolling || gameOver) return;
+  if (isRolling || gameOver || !gameStarted) return;
 
   const rollBtn = document.getElementById("roll-btn");
   const dice1 = document.getElementById("dice1");
@@ -186,6 +235,12 @@ async function rollDice() {
 async function finishRoll() {
   const response = await fetch("api/roll");
   const data = await response.json();
+  if (!response.ok) {
+    alert(data.error || "Dice roll failed");
+    document.getElementById("roll-btn").disabled = gameOver || !gameStarted;
+    isRolling = false;
+    return;
+  }
 
   const dice1 = document.getElementById("dice1");
   const dice2 = document.getElementById("dice2");
@@ -195,7 +250,7 @@ async function finishRoll() {
   updateDiceUI(data.remaining_dice);
   await loadState();
 
-  document.getElementById("roll-btn").disabled = false;
+  document.getElementById("roll-btn").disabled = true;
   isRolling = false;
 }
 
@@ -368,11 +423,15 @@ async function executeMove(die, move) {
   if (data.game_over) {
     gameOver = true;
     document.getElementById("roll-btn").disabled = true;
+  } else {
+    document.getElementById("roll-btn").disabled =
+      data.remaining_dice && data.remaining_dice.length > 0;
   }
 }
 
 // Event listeners
 document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("opening-roll-btn").addEventListener("click", openingRollToStart);
   document.getElementById("roll-btn").addEventListener("click", rollDice);
   document.getElementById("cancel-selection").addEventListener("click", () => resetSelection());
   document.getElementById("dice1").addEventListener("click", onDieClick);

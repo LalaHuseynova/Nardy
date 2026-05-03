@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request
+import random
 from game_state import GameState
 from game_logic import NardyGame
 
@@ -13,6 +14,8 @@ remaining_dice = []
 head_moves_used = 0
 # maximum allowed head moves for this turn (1 normally, 2 for initial double 3/4/6)
 max_head_moves = 1
+game_started = False
+opening_roll = None
 
 def is_game_over():
     return state.borne_off[1] == 15 or state.borne_off[-1] == 15
@@ -28,13 +31,52 @@ def get_state():
         "current_player": state.current_player,
         "borne_off": state.borne_off,
         "remaining_dice": remaining_dice,
+        "game_started": game_started,
+        "opening_roll": opening_roll,
         "game_over": is_game_over(),
         "winner": 1 if state.borne_off[1] == 15 else (-1 if state.borne_off[-1] == 15 else None)
+    })
+
+@app.route("/api/opening_roll", methods=["POST"])
+def opening_roll_to_start():
+    global game_started, opening_roll
+    if game_started:
+        return jsonify({
+            "current_player": state.current_player,
+            "game_started": game_started,
+            "opening_roll": opening_roll
+        })
+
+    rolls = []
+    while True:
+        player_one_die = random.randint(1, 6)
+        player_two_die = random.randint(1, 6)
+        rolls.append({
+            "player_one": player_one_die,
+            "player_two": player_two_die
+        })
+        if player_one_die != player_two_die:
+            break
+
+    state.current_player = 1 if player_one_die > player_two_die else -1
+    opening_roll = {
+        "rolls": rolls,
+        "winner": state.current_player
+    }
+    game_started = True
+    return jsonify({
+        "current_player": state.current_player,
+        "game_started": game_started,
+        "opening_roll": opening_roll
     })
 
 @app.route("/api/roll")
 def roll_dice():
     global remaining_dice, head_moves_used, max_head_moves
+    if not game_started:
+        return jsonify({"error": "Roll one die to decide who starts first"}), 400
+    if remaining_dice:
+        return jsonify({"error": "Finish your current dice before rolling again"}), 400
     if is_game_over():
         return jsonify({"error": "Game already over"}), 400
 
@@ -169,6 +211,8 @@ def apply_die_move():
         "current_player": state.current_player,
         "borne_off": state.borne_off,
         "remaining_dice": remaining_dice,
+        "game_started": game_started,
+        "opening_roll": opening_roll,
         "game_over": is_game_over(),
         "winner": 1 if state.borne_off[1] == 15 else (-1 if state.borne_off[-1] == 15 else None)
     })

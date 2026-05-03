@@ -9,37 +9,49 @@ let rollAnimationInterval = null;
 let isRolling = false;
 let pendingSource = null;
 let isAIPlaying = false;
+let gameStarted = false;
 
 const AI_PLAYER = -1;
 
 async function loadState() {
   const response = await fetch("api/state");
   const data = await response.json();
+  const rollBtn = document.getElementById("roll-btn");
+
   renderInfo(data);
   renderBoard(data.board);
   updateDiceUI(data.remaining_dice);
+  renderOpeningRoll(data);
   resetSelection();
   gameOver = data.game_over;
+  gameStarted = Boolean(data.game_started);
+
   if (gameOver) {
-    document.getElementById("roll-btn").disabled = true;
+    rollBtn.disabled = true;
+  } else if (!gameStarted) {
+    rollBtn.disabled = true;
+  } else if (data.current_player === AI_PLAYER) {
+    rollBtn.disabled = true;
+    await aiMoveIfNeeded(data.current_player);
   } else {
-    aiMoveIfNeeded();
+    rollBtn.disabled = data.remaining_dice && data.remaining_dice.length > 0;
   }
 }
 
 // ========== VERY SLOW AI TURN ==========
-async function aiMoveIfNeeded() {
+async function aiMoveIfNeeded(currentPlayer) {
   if (gameOver || isAIPlaying) return;
 
-  const currentPlayerText = document.getElementById("current-player").innerText;
-  const isAITurn = currentPlayerText.includes("Player 2") && AI_PLAYER === -1;
+  const isAITurn = currentPlayer === AI_PLAYER;
   if (!isAITurn) return;
 
   isAIPlaying = true;
   const rollBtn = document.getElementById("roll-btn");
   rollBtn.disabled = true;
+  document.getElementById("current-player").textContent = "AI is playing (Player 2 -)";
 
   // Show a status message
+  document.getElementById("ai-status")?.remove();
   const aiStatus = document.createElement("div");
   aiStatus.id = "ai-status";
   aiStatus.textContent = "AI is rolling dice...";
@@ -54,7 +66,15 @@ async function aiMoveIfNeeded() {
   document.body.appendChild(aiStatus);
 
   // 1. Roll dice for AI with slower animation
-  await animateAIDiceRollSlow();
+  try {
+    await animateAIDiceRollSlow();
+  } catch (error) {
+    console.error("AI dice roll failed:", error);
+    aiStatus.remove();
+    rollBtn.disabled = false;
+    isAIPlaying = false;
+    return;
+  }
 
   // 2. Wait 2.5 seconds so human can read the dice
   aiStatus.textContent = "AI rolled. Waiting...";
@@ -103,24 +123,31 @@ async function animateAIDiceRollSlow() {
   dice1.style.display = "inline-block";
   dice2.style.display = "inline-block";
 
-  let frames = 0;
-  const maxFrames = 20;   // more frames = slower animation
-  const interval = setInterval(() => {
-    const rand1 = Math.floor(Math.random() * 6) + 1;
-    const rand2 = Math.floor(Math.random() * 6) + 1;
-    dice1.src = `static/dice/dice${rand1}.png`;
-    dice2.src = `static/dice/dice${rand2}.png`;
-    frames++;
-    if (frames >= maxFrames) {
-      clearInterval(interval);
-      finishAIDiceRoll();
-    }
-  }, 70);   // slower interval (70ms instead of 50)
+  await new Promise(resolve => {
+    let frames = 0;
+    const maxFrames = 20;
+    const interval = setInterval(() => {
+      const rand1 = Math.floor(Math.random() * 6) + 1;
+      const rand2 = Math.floor(Math.random() * 6) + 1;
+      dice1.src = `static/dice/dice${rand1}.png`;
+      dice2.src = `static/dice/dice${rand2}.png`;
+      frames++;
+      if (frames >= maxFrames) {
+        clearInterval(interval);
+        resolve();
+      }
+    }, 70);
+  });
+
+  await finishAIDiceRoll();
 }
 
 async function finishAIDiceRoll() {
   const response = await fetch("api/roll");
   const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "AI dice roll failed");
+  }
   const dice1 = document.getElementById("dice1");
   const dice2 = document.getElementById("dice2");
   if (data.dice[0]) dice1.src = `static/dice/dice${data.dice[0]}.png`;
@@ -134,13 +161,58 @@ function delay(ms) {
 // ===========================================
 
 function renderInfo(data) {
-  const currentPlayerText = data.current_player === 1 ? "Player 1 (+)" : "Player 2 (-)";
+  const currentPlayerText = data.current_player === 1 ? "Your turn (Player 1 +)" : "AI turn (Player 2 -)";
   document.getElementById("current-player").textContent =
     data.game_over 
       ? (data.winner === 1 ? "Player 1 (White) wins!" : "Player 2 (Black) wins!")
+      : data.game_started === false
+      ? "Roll one die to decide who starts"
       : `Current player: ${currentPlayerText}`;
   document.getElementById("borne-off").textContent =
     `Borne off: P1=${data.borne_off["1"]}, P2=${data.borne_off["-1"]}`;
+}
+
+function renderOpeningRoll(data) {
+  const panel = document.getElementById("opening-roll");
+  const button = document.getElementById("opening-roll-btn");
+  const result = document.getElementById("opening-roll-result");
+  if (!panel || !button || !result) return;
+
+  if (!data.game_started) {
+    panel.classList.remove("resolved");
+    button.disabled = false;
+    result.textContent = "You and AI roll one die. Higher roll starts.";
+    return;
+  }
+
+  panel.classList.add("resolved");
+  button.disabled = true;
+  const openingRoll = data.opening_roll;
+  if (!openingRoll || !openingRoll.rolls || openingRoll.rolls.length === 0) {
+    result.textContent = "Starting player decided.";
+    return;
+  }
+
+  const lastRoll = openingRoll.rolls[openingRoll.rolls.length - 1];
+  const winner = openingRoll.winner === 1 ? "You start" : "AI starts";
+  const tieText = openingRoll.rolls.length > 1 ? ` (${openingRoll.rolls.length - 1} tie reroll)` : "";
+  result.textContent = `You ${lastRoll.player_one} - AI ${lastRoll.player_two}. ${winner}${tieText}.`;
+}
+
+async function openingRollToStart() {
+  if (gameStarted || gameOver || isAIPlaying) return;
+  const button = document.getElementById("opening-roll-btn");
+  if (button) button.disabled = true;
+
+  const response = await fetch("api/opening_roll", { method: "POST" });
+  const data = await response.json();
+  if (!response.ok) {
+    alert(data.error || "Opening roll failed");
+    if (button) button.disabled = false;
+    return;
+  }
+
+  await loadState();
 }
 
 function renderBoard(board) {
@@ -267,7 +339,7 @@ function updateDiceUI(remainingDice) {
 }
 
 async function rollDice() {
-  if (isRolling || gameOver || isAIPlaying) return;
+  if (isRolling || gameOver || isAIPlaying || !gameStarted) return;
 
   const rollBtn = document.getElementById("roll-btn");
   const dice1 = document.getElementById("dice1");
@@ -298,6 +370,12 @@ async function rollDice() {
 async function finishRoll() {
   const response = await fetch("api/roll");
   const data = await response.json();
+  if (!response.ok) {
+    alert(data.error || "Dice roll failed");
+    document.getElementById("roll-btn").disabled = gameOver || !gameStarted || isAIPlaying;
+    isRolling = false;
+    return;
+  }
 
   const dice1 = document.getElementById("dice1");
   const dice2 = document.getElementById("dice2");
@@ -307,7 +385,7 @@ async function finishRoll() {
   updateDiceUI(data.remaining_dice);
   await loadState();
 
-  document.getElementById("roll-btn").disabled = false;
+  document.getElementById("roll-btn").disabled = true;
   isRolling = false;
 }
 
@@ -466,11 +544,16 @@ async function executeMove(die, move) {
     gameOver = true;
     document.getElementById("roll-btn").disabled = true;
   } else {
-    aiMoveIfNeeded();
+    document.getElementById("roll-btn").disabled =
+      data.current_player === AI_PLAYER || (data.remaining_dice && data.remaining_dice.length > 0);
+    if (data.current_player === AI_PLAYER) {
+      aiMoveIfNeeded(data.current_player);
+    }
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("opening-roll-btn").addEventListener("click", openingRollToStart);
   document.getElementById("roll-btn").addEventListener("click", rollDice);
   document.getElementById("cancel-selection").addEventListener("click", () => resetSelection());
   document.getElementById("dice1").addEventListener("click", onDieClick);

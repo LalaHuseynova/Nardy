@@ -1,5 +1,6 @@
 # app_ai.py
 from flask import Flask, render_template, jsonify, request
+import random
 from game_state import GameState
 from game_logic import NardyGame
 from ai_agent import NardyAI   # we'll create this file next
@@ -12,6 +13,8 @@ state = GameState()
 remaining_dice = []
 head_moves_used = 0
 max_head_moves = 1
+game_started = False
+opening_roll = None
 
 # AI controls player 2 (-1)
 AI_PLAYER = -1
@@ -32,13 +35,52 @@ def get_state():
         "current_player": state.current_player,
         "borne_off": state.borne_off,
         "remaining_dice": remaining_dice,
+        "game_started": game_started,
+        "opening_roll": opening_roll,
         "game_over": is_game_over(),
         "winner": 1 if state.borne_off[1] == 15 else (-1 if state.borne_off[-1] == 15 else None)
+    })
+
+@app.route("/api/opening_roll", methods=["POST"])
+def opening_roll_to_start():
+    global game_started, opening_roll
+    if game_started:
+        return jsonify({
+            "current_player": state.current_player,
+            "game_started": game_started,
+            "opening_roll": opening_roll
+        })
+
+    rolls = []
+    while True:
+        human_die = random.randint(1, 6)
+        ai_die = random.randint(1, 6)
+        rolls.append({
+            "player_one": human_die,
+            "player_two": ai_die
+        })
+        if human_die != ai_die:
+            break
+
+    state.current_player = 1 if human_die > ai_die else -1
+    opening_roll = {
+        "rolls": rolls,
+        "winner": state.current_player
+    }
+    game_started = True
+    return jsonify({
+        "current_player": state.current_player,
+        "game_started": game_started,
+        "opening_roll": opening_roll
     })
 
 @app.route("/api/roll")
 def roll_dice():
     global remaining_dice, head_moves_used, max_head_moves
+    if not game_started:
+        return jsonify({"error": "Roll one die to decide who starts first"}), 400
+    if remaining_dice:
+        return jsonify({"error": "Finish your current dice before rolling again"}), 400
     if is_game_over():
         return jsonify({"error": "Game already over"}), 400
 
@@ -166,6 +208,8 @@ def apply_die_move():
         "current_player": state.current_player,
         "borne_off": state.borne_off,
         "remaining_dice": remaining_dice,
+        "game_started": game_started,
+        "opening_roll": opening_roll,
         "game_over": is_game_over(),
         "winner": 1 if state.borne_off[1] == 15 else (-1 if state.borne_off[-1] == 15 else None)
     })
@@ -193,6 +237,8 @@ def ai_move():
             "current_player": state.current_player,
             "borne_off": state.borne_off,
             "remaining_dice": remaining_dice,
+            "game_started": game_started,
+            "opening_roll": opening_roll,
             "game_over": is_game_over(),
             "winner": 1 if state.borne_off[1] == 15 else (-1 if state.borne_off[-1] == 15 else None)
         })
@@ -211,6 +257,8 @@ def ai_move():
         "current_player": state.current_player,
         "borne_off": state.borne_off,
         "remaining_dice": remaining_dice,
+        "game_started": game_started,
+        "opening_roll": opening_roll,
         "game_over": is_game_over(),
         "winner": 1 if state.borne_off[1] == 15 else (-1 if state.borne_off[-1] == 15 else None)
     })
