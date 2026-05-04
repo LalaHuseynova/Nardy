@@ -95,6 +95,9 @@ Nardy/
     ├── index_ai.html        # Human vs AI page
     └── mode_select.html     # Mode selection page
 ```
+## GitHub Repository
+Repository Link: 
+https://github.com/LalaHuseynova/Nardy
 
 ## Installation
 
