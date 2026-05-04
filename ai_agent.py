@@ -20,9 +20,6 @@ class NardyAI:
         for seq in sequences:
             after_ai = self.game_logic.apply_move_sequence(state, seq)
 
-            #  after AI move, turn must change to opponent
-            after_ai.current_player *= -1
-
             value = self._expectiminimax(after_ai, depth=1)
 
             if value > best_value:
@@ -53,10 +50,6 @@ class NardyAI:
 
         for seq in sequences:
             after = self.game_logic.apply_move_sequence(state, seq)
-
-            #  switch turn after full move sequence
-            after.current_player *= -1
-
             values.append(self._expectiminimax(after, depth + 1))
 
         if player_to_move == self.player:
@@ -94,7 +87,7 @@ class NardyAI:
 
         ai_blots = self._count_blots(state, ai)
         opp_blots = self._count_blots(state, opp)
-        blot_score = (opp_blots - ai_blots) * 8.0
+        blot_score = (opp_blots - ai_blots) * 1.0
 
         ai_blocks = self._count_blocks(state, ai)
         opp_blocks = self._count_blocks(state, opp)
