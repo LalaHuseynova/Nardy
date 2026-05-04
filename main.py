@@ -1,4 +1,3 @@
-# main.py
 
 from game_state import GameState
 from game_logic import NardyGame

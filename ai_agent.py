@@ -1,5 +1,3 @@
-# ai_agent.py – Corrected Expectiminimax Depth 3
-
 from game_state import GameState
 from game_logic import NardyGame
 from config import PLAYER_ONE, PLAYER_TWO, CHECKERS_PER_PLAYER
@@ -22,7 +20,7 @@ class NardyAI:
         for seq in sequences:
             after_ai = self.game_logic.apply_move_sequence(state, seq)
 
-            # IMPORTANT: after AI move, turn must change to opponent
+            #  after AI move, turn must change to opponent
             after_ai.current_player *= -1
 
             value = self._expectiminimax(after_ai, depth=1)
@@ -56,7 +54,7 @@ class NardyAI:
         for seq in sequences:
             after = self.game_logic.apply_move_sequence(state, seq)
 
-            # IMPORTANT: switch turn after full move sequence
+            #  switch turn after full move sequence
             after.current_player *= -1
 
             values.append(self._expectiminimax(after, depth + 1))

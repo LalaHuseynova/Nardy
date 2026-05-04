@@ -1,4 +1,3 @@
-// static/script_ai.js – SLOW, VISIBLE AI
 let selectedDie = null;
 let possibleMoves = [];
 let highlightedSources = new Set();
@@ -38,7 +37,7 @@ async function loadState() {
   }
 }
 
-// ========== VERY SLOW AI TURN ==========
+// VERY SLOW AI TURN 
 async function aiMoveIfNeeded(currentPlayer) {
   if (gameOver || isAIPlaying) return;
 
@@ -158,7 +157,6 @@ async function finishAIDiceRoll() {
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-// ===========================================
 
 function renderInfo(data) {
   const currentPlayerText = data.current_player === 1 ? "Your turn (Player 1 +)" : "AI turn (Player 2 -)";

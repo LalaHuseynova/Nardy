@@ -254,7 +254,7 @@ async function finishRoll() {
   isRolling = false;
 }
 
-// ========== DIE‑FIRST FLOW ==========
+// DIE‑FIRST FLOW 
 async function onDieClick(event) {
   if (gameOver) return;
   const dieImg = event.currentTarget;
@@ -309,7 +309,7 @@ async function onDieClick(event) {
   applyHighlights();
 }
 
-// ========== SOURCE‑FIRST FLOW (click on a point) ==========
+//  SOURCE‑FIRST FLOW (click on a point) 
 async function onPointClick(event) {
   if (gameOver) return;
   const pointDiv = event.currentTarget;

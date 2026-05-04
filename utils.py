@@ -1,4 +1,3 @@
-# utils.py
 
 from config import PLAYER_ONE
 

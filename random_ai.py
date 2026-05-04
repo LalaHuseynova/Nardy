@@ -1,5 +1,3 @@
-# random_ai_agent.py
-
 import random
 from game_logic import NardyGame
 

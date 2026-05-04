@@ -6,10 +6,11 @@ from game_logic import NardyGame
 from config import PLAYER_ONE, PLAYER_TWO
 from ai_agent import NardyAI
 from random_ai import RandomAI
+import matplotlib.pyplot as plt
 
 
 NUM_GAMES = 5
-MAX_TURNS = 150
+MAX_TURNS = 1350
 
 
 def roll_dice():
@@ -86,6 +87,19 @@ def compare_agents():
     print(f"Random AI wins: {random_wins}")
     print(f"Draws: {draws}")
 
+    # Create performance figure
+    agents = ["Expectiminimax", "Random AI", "Draws"]
+    results = [expect_wins, random_wins, draws]
+
+    plt.figure(figsize=(6, 4))
+    plt.bar(agents, results)
+    plt.title("AI Performance Comparison")
+    plt.xlabel("Agent")
+    plt.ylabel("Number of Wins")
+    plt.ylim(0, NUM_GAMES)
+    plt.tight_layout()
+    plt.savefig("ai_performance_results.png")
+    plt.show()
 
 if __name__ == "__main__":
     compare_agents()

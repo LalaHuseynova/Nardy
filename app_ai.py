@@ -1,4 +1,3 @@
-# app_ai.py
 from flask import Flask, render_template, jsonify, request
 import random
 from game_state import GameState
@@ -227,7 +226,7 @@ def apply_die_move():
         "winner": 1 if state.borne_off[1] == 15 else (-1 if state.borne_off[-1] == 15 else None)
     })
 
-# -------------------- AI endpoint --------------------
+# AI endpoint 
 @app.route("/api/ai_move", methods=["POST"])
 def ai_move():
     global state, remaining_dice, head_moves_used, max_head_moves

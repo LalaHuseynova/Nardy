@@ -1,5 +1,3 @@
-# config.py
-
 NUM_POINTS = 24
 CHECKERS_PER_PLAYER = 15
 

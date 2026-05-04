@@ -1,5 +1,3 @@
-# game_state.py
-
 from copy import deepcopy
 from config import NUM_POINTS, PLAYER_ONE, PLAYER_TWO, CHECKERS_PER_PLAYER
 
